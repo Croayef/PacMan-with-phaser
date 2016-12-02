@@ -37,7 +37,7 @@
             this.load.tilemap('map', 'assets/maze.json', null, Phaser.Tilemap.TILED_JSON);
             this.load.image('tiles', 'assets/tiles.png');
           this.load.spritesheet('pacman', 'assets/pacman-sprite.png', 32, 32);
- 
+ this.load.image('dot', 'assets/dot.png');
 
         },
 
@@ -50,8 +50,10 @@
           
           this.dots = this.add.physicsGroup();
           
-          this.dots.setAll('x', 6, false, false, 1);
-          this.dots.setAll('y', 6, false, false, 1);
+          this.map.createFromTiles(1, this.safetile, 'dot', this.layer, this.dots);
+          
+          this.dots.setAll('x', 14, false, false, 1);
+          this.dots.setAll('y', 14, false, false, 1);
            
             this.map.setCollision(20, true, this.layer);
 
@@ -268,7 +270,7 @@
                 this.game.debug.geom(new Phaser.Rectangle(this.directions[t].worldX, this.directions[t].worldY, 32, 32), color, true);
             }
 
-            this.game.debug.geom(this.turnPoint, '#ffff00');
+           // this.game.debug.geom(this.turnPoint, '#ffff00');
 
         }
 
