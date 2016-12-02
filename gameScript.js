@@ -4,8 +4,8 @@
 
         this.map = null;
         this.layer = null;
-        this.car = null;
-
+      this.pacman = null;
+      
         this.safetile = 1;
         this.gridsize = 32;
 
@@ -34,35 +34,38 @@
 
         preload: function () {
 
-            //  We need this because the assets are on Amazon S3
-            //  Remove the next 2 lines if running locally
-            this.load.baseURL = 'http://files.phaser.io.s3.amazonaws.com/codingtips/issue005/';
-            this.load.crossOrigin = 'anonymous';
-
             this.load.tilemap('map', 'assets/maze.json', null, Phaser.Tilemap.TILED_JSON);
             this.load.image('tiles', 'assets/tiles.png');
-            this.load.image('car', 'assets/car.png');
-
-            //  Note: Graphics are Copyright 2015 Photon Storm Ltd.
+          this.load.spritesheet('pacman', 'assets/pacman-sprite.png', 32, 32);
+ 
 
         },
 
         create: function () {
-
+   
             this.map = this.add.tilemap('map');
             this.map.addTilesetImage('tiles', 'tiles');
 
             this.layer = this.map.createLayer('Tile Layer 1');
-
+          
+          this.dots = this.add.physicsGroup();
+          
+          this.dots.setAll('x', 6, false, false, 1);
+          this.dots.setAll('y', 6, false, false, 1);
+           
             this.map.setCollision(20, true, this.layer);
 
-            this.car = this.add.sprite(48, 48, 'car');
-            this.car.anchor.set(0.5);
 
-            this.physics.arcade.enable(this.car);
-
+            this.pacman = this.add.sprite(48,48, 'pacman', 0);
+            this.pacman.anchor.set(0.5);
+            this.pacman.animations.add('munch', [0, 1, 2, 1], 15, true);
+          
+            this.physics.arcade.enable(this.pacman);
+          
             this.cursors = this.input.keyboard.createCursorKeys();
 
+           this.pacman.play('munch');
+          
             this.move(Phaser.DOWN);
 
         },
@@ -119,8 +122,8 @@
 
         turn: function () {
 
-            var cx = Math.floor(this.car.x);
-            var cy = Math.floor(this.car.y);
+            var cx = Math.floor(this.pacman.x);
+            var cy = Math.floor(this.pacman.y);
 
             //  This needs a threshold, because at high speeds you can't turn because the coordinates skip past
             if (!this.math.fuzzyEqual(cx, this.turnPoint.x, this.threshold) || !this.math.fuzzyEqual(cy, this.turnPoint.y, this.threshold))
@@ -128,11 +131,11 @@
                 return false;
             }
 
-            this.car.x = this.turnPoint.x;
-            this.car.y = this.turnPoint.y;
+            this.pacman.x = this.turnPoint.x;
+            this.pacman.y = this.turnPoint.y;
 
-            this.car.body.reset(this.turnPoint.x, this.turnPoint.y);
-
+           this.pacman.body.reset(this.turnPoint.x, this.turnPoint.y);
+          
             this.move(this.turning);
 
             this.turning = Phaser.NONE;
@@ -152,19 +155,48 @@
 
             if (direction === Phaser.LEFT || direction === Phaser.RIGHT)
             {
-                this.car.body.velocity.x = speed;
+                this.pacman.body.velocity.x = speed;
             }
             else
             {
-                this.car.body.velocity.y = speed;
+                this.pacman.body.velocity.y = speed;
             }
 
-            this.add.tween(this.car).to( { angle: this.getAngle(direction) }, this.turnSpeed, "Linear", true);
-
+            this.pacman.scale.x = 1;
+            this.pacman.angle = 0;
+          
+           
+        
+          if (direction === Phaser.LEFT)
+            {
+                this.pacman.scale.x = -1;
+            }
+            else if (direction === Phaser.UP)
+            {
+                this.pacman.angle = 270;
+            }
+            else if (direction === Phaser.DOWN)
+            {
+                this.pacman.angle = 90;
+            }
+          
+          
+          
             this.current = direction;
 
         },
+      
+      eatDot: function (pacman, dot) {
 
+            dot.kill();
+
+            if (this.dots.total === 0)
+            {
+                this.dots.callAll('revive');
+            }
+
+        },
+      
         getAngle: function (to) {
 
             //  About-face?
@@ -187,11 +219,14 @@
 
         update: function () {
           
-            this.physics.arcade.collide(this.car, this.layer);
+            this.physics.arcade.collide(this.pacman, this.layer);
+            this.physics.arcade.overlap(this.pacman, this.dots, this.eatDot, null, this);
+          
 
-            this.marker.x = this.math.snapToFloor(Math.floor(this.car.x), this.gridsize) / this.gridsize;
-            this.marker.y = this.math.snapToFloor(Math.floor(this.car.y), this.gridsize) / this.gridsize;
-
+          
+           this.marker.x = this.math.snapToFloor(Math.floor(this.pacman.x), this.gridsize) / this.gridsize;
+           this.marker.y = this.math.snapToFloor(Math.floor(this.pacman.y), this.gridsize) / this.gridsize;
+          
             //  Update our grid sensors
             this.directions[1] = this.map.getTileLeft(this.layer.index, this.marker.x, this.marker.y);
             this.directions[2] = this.map.getTileRight(this.layer.index, this.marker.x, this.marker.y);
