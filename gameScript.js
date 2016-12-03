@@ -1,10 +1,21 @@
-    var game = new Phaser.Game(640, 480, Phaser.CANVAS, 'game');
+    var game = new Phaser.Game(640, 520, Phaser.CANVAS, 'game');
 
     var PhaserGame = function (game) {
 
         this.map = null;
         this.layer = null;
       this.pacman = null;
+      this.redGhost = null;
+      this.pinkGhost = null;
+      this.orangeGhost = null;
+      this.blueGhost = null;
+      this.purpleGhost = null;
+      this.alive = false;
+      this.stateText = null;
+      
+      var score = 0;
+var scoreString = '';
+var scoreText;
       
         this.safetile = 1;
         this.gridsize = 32;
@@ -36,19 +47,23 @@
 
             this.load.tilemap('map', 'assets/maze.json', null, Phaser.Tilemap.TILED_JSON);
             this.load.image('tiles', 'assets/tiles.png');
-          this.load.spritesheet('pacman', 'assets/pacman-sprite.png', 32, 32);
- this.load.image('dot', 'assets/dot.png');
+            this.load.spritesheet('pacman', 'assets/pacman-sprite.png', 32, 32);
+            this.load.image('dot', 'assets/dot.png');
+            this.load.spritesheet('sprites', 'assets/sprites.png',32,32);
 
         },
 
         create: function () {
-   
+        
+          this.score = 0;        
+
             this.map = this.add.tilemap('map');
             this.map.addTilesetImage('tiles', 'tiles');
 
             this.layer = this.map.createLayer('Tile Layer 1');
           
           this.dots = this.add.physicsGroup();
+          
           
           this.map.createFromTiles(1, this.safetile, 'dot', this.layer, this.dots);
           
@@ -57,18 +72,36 @@
            
             this.map.setCollision(20, true, this.layer);
 
-
-            this.pacman = this.add.sprite(48,48, 'pacman', 0);
+          var begX = 1;
+          var begY = 1;
+          
+            this.pacman = this.add.sprite((16+begX*32),(16+begY*32), 'sprites', 10);
             this.pacman.anchor.set(0.5);
-            this.pacman.animations.add('munch', [0, 1, 2, 1], 15, true);
+          
+          this.redGhost = this.add.sprite((48+2*32),(48+1*32), 'sprites', 0)
+          this.redGhost.anchor.set(0.5);
+          
+          this.physics.arcade.enable(this.redGhost);
+          //zwykły pacman
+            //this.pacman.animations.add('munch', [0,1,2,3,2,1], 15, true);
+          
+          //pacman HD
+            this.pacman.animations.add('munch', [10,11], 15, true);
           
             this.physics.arcade.enable(this.pacman);
           
             this.cursors = this.input.keyboard.createCursorKeys();
 
            this.pacman.play('munch');
-          
-            this.move(Phaser.DOWN);
+           this.redGhost.play('redGhostAnim');
+            //  Text
+        this.stateText = this.add.text(this.world.centerX,this.world.centerY,' ', { font: '84px Arial', fill: '#fff' });
+        this.stateText.anchor.setTo(0.5, 0.5);
+        this.stateText.visible = false;
+          //  The score
+        this.scoreString = 'Score : ';
+        this.scoreText = this.add.text(10, 480, this.scoreString + this.score, { font: '34px Arial', fill: '#fff' });
+           this.move(Phaser.DOWN);
 
         },
 
@@ -191,7 +224,8 @@
       eatDot: function (pacman, dot) {
 
             dot.kill();
-
+        this.score++;
+        this.scoreText.text = this.scoreString + this.score;
             if (this.dots.total === 0)
             {
                 this.dots.callAll('revive');
@@ -199,30 +233,28 @@
 
         },
       
-        getAngle: function (to) {
+        die: function (pacman, ghost) 
+      {
+          this.score = 0;
+        
+          this.pacman.kill();
+        this.redGhost.kill();
 
-            //  About-face?
-            if (this.current === this.opposites[to])
-            {
-                return "180";
-            }
+        this.stateText.text=" GAME OVER \n Click to restart";
+        this.stateText.visible = true;
 
-            if ((this.current === Phaser.UP && to === Phaser.LEFT) ||
-                (this.current === Phaser.DOWN && to === Phaser.RIGHT) ||
-                (this.current === Phaser.LEFT && to === Phaser.DOWN) ||
-                (this.current === Phaser.RIGHT && to === Phaser.UP))
-            {
-                return "-90";
-            }
-
-            return "90";
-
+        //the "click to restart" handler
+        this.input.onTap.addOnce(this.restart,this);
+        
         },
 
         update: function () {
           
-            this.physics.arcade.collide(this.pacman, this.layer);
-            this.physics.arcade.overlap(this.pacman, this.dots, this.eatDot, null, this);
+        
+           
+          this.physics.arcade.collide(this.pacman, this.layer);
+          this.physics.arcade.collide(this.pacman, this.redGhost, this.die, null, this);
+          this.physics.arcade.overlap(this.pacman, this.dots, this.eatDot, null, this);
           
 
           
@@ -243,7 +275,34 @@
             }
 
         },
+      restartPacmanPosition : function(){
+        this.pacman.x = 48;
+        this.pacman.y = 48;
+        
+      },
+      restartGhostsPositions : function(){
+        this.redGhost.body.velocity.x = 0;
+        this.redGhost.body.velocity.y = 0;
+        this.redGhost.x = (48+2*32)
+        this.redGhost.y = (48+1*32);
+      },
+        restart : function() {
 
+            //  A new level starts
+          this.dots.callAll('revive');
+          this.restartPacmanPosition();
+          this.restartGhostsPositions();
+          //revives the player
+            this.pacman.revive();
+         this.redGhost.revive();
+          this.scoreText.text = this.scoreString + this.score;
+            //hides the text
+          this.stateText.visible = false;
+          
+          this.move(Phaser.DOWN);
+          
+        },
+      
         render: function () {
 
             //  Un-comment this to see the debug drawing
