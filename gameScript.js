@@ -13,9 +13,23 @@
       this.alive = false;
       this.stateText = null;
       
-      var score = 0;
-var scoreString = '';
-var scoreText;
+      this.stage = "Tile Layer 1";
+      this.pacmanBegX = 1;
+      this.pacmanBegY = 1;
+      this.redGhostBegX = 3;
+      this.redGhostBegY = 2;
+      this.pinkGhostBegX = 0;
+      this.pinkGhostBegY = 0;
+      this.orangeGhostBegX = 0;
+      this.orangeGhostBegY = 0;
+      this.blueGhostBegX = 0;
+      this.blueGhostBegY = 0;
+      this.purpleGhostBegX = 0;
+      this.purpleGhostBegY = 0;
+      
+      this.score = 0;
+      this.scoreString = '';
+      this.scoreText;
       
         this.safetile = 1;
         this.gridsize = 32;
@@ -47,23 +61,23 @@ var scoreText;
 
             this.load.tilemap('map', 'assets/maze.json', null, Phaser.Tilemap.TILED_JSON);
             this.load.image('tiles', 'assets/tiles.png');
-            this.load.spritesheet('pacman', 'assets/pacman-sprite.png', 32, 32);
             this.load.image('dot', 'assets/dot.png');
+          this.load.spritesheet('pacman','assets/pacman-sprite.png',32,32);
             this.load.spritesheet('sprites', 'assets/sprites.png',32,32);
 
         },
 
         create: function () {
         
-          this.score = 0;        
+          this.score = -1       
 
             this.map = this.add.tilemap('map');
             this.map.addTilesetImage('tiles', 'tiles');
 
-            this.layer = this.map.createLayer('Tile Layer 1');
+            this.layer = this.map.createLayer("Tile Layer 1");
           
           this.dots = this.add.physicsGroup();
-          
+   
           
           this.map.createFromTiles(1, this.safetile, 'dot', this.layer, this.dots);
           
@@ -72,37 +86,51 @@ var scoreText;
            
             this.map.setCollision(20, true, this.layer);
 
-          var begX = 1;
-          var begY = 1;
+    
           
-            this.pacman = this.add.sprite((16+begX*32),(16+begY*32), 'sprites', 10);
+            this.pacman = this.add.sprite((16+this.pacmanBegX*32),(16+this.pacmanBegY*32), 'pacman', 10);
             this.pacman.anchor.set(0.5);
           
-          this.redGhost = this.add.sprite((48+2*32),(48+1*32), 'sprites', 0)
+          this.redGhost = this.add.sprite((16+this.redGhostBegX*32),(16+this.redGhostBegY*32), 'sprites', 0)
           this.redGhost.anchor.set(0.5);
           
           this.physics.arcade.enable(this.redGhost);
-          //zwykły pacman
-            //this.pacman.animations.add('munch', [0,1,2,3,2,1], 15, true);
+       
           
           //pacman HD
-            this.pacman.animations.add('munch', [10,11], 15, true);
+            this.pacman.animations.add('munch', [0,1,2,3,2,1], 30, true);
           
             this.physics.arcade.enable(this.pacman);
           
             this.cursors = this.input.keyboard.createCursorKeys();
 
+           this.redGhost.animations.add('redHorizontalGhost',[0,1],8,true);
+
+    
+       
            this.pacman.play('munch');
-           this.redGhost.play('redGhostAnim');
+           this.redGhost.play('redHorizontalGhost');
             //  Text
         this.stateText = this.add.text(this.world.centerX,this.world.centerY,' ', { font: '84px Arial', fill: '#fff' });
         this.stateText.anchor.setTo(0.5, 0.5);
         this.stateText.visible = false;
+          
+          
+          
           //  The score
         this.scoreString = 'Score : ';
+      
         this.scoreText = this.add.text(10, 480, this.scoreString + this.score, { font: '34px Arial', fill: '#fff' });
-           this.move(Phaser.DOWN);
+          
+        
+      
+    
+          
+          this.move(Phaser.DOWN);
 
+          
+          
+          
         },
 
         checkKeys: function () {
@@ -226,20 +254,20 @@ var scoreText;
             dot.kill();
         this.score++;
         this.scoreText.text = this.scoreString + this.score;
-            if (this.dots.total === 0)
-            {
-                this.dots.callAll('revive');
-            }
+           // if (this.dots.total === 0)
+          //  {
+          //      this.dots.callAll('revive');
+          //  }
 
         },
       
-        die: function (pacman, ghost) 
+        die: function () 
       {
-          this.score = 0;
+          this.score = -1;
         
-          this.pacman.kill();
+        this.pacman.kill();
         this.redGhost.kill();
-
+        this.dots.callAll('kill');
         this.stateText.text=" GAME OVER \n Click to restart";
         this.stateText.visible = true;
 
@@ -253,7 +281,7 @@ var scoreText;
         
            
           this.physics.arcade.collide(this.pacman, this.layer);
-          this.physics.arcade.collide(this.pacman, this.redGhost, this.die, null, this);
+          this.physics.arcade.overlap(this.pacman, this.redGhost, this.die, null, this);
           this.physics.arcade.overlap(this.pacman, this.dots, this.eatDot, null, this);
           
 
@@ -289,13 +317,14 @@ var scoreText;
         restart : function() {
 
             //  A new level starts
+          
           this.dots.callAll('revive');
           this.restartPacmanPosition();
           this.restartGhostsPositions();
           //revives the player
-            this.pacman.revive();
+         this.pacman.revive();
          this.redGhost.revive();
-          this.scoreText.text = this.scoreString + this.score;
+         this.scoreText.text = this.scoreString + this.score;
             //hides the text
           this.stateText.visible = false;
           
@@ -306,7 +335,7 @@ var scoreText;
         render: function () {
 
             //  Un-comment this to see the debug drawing
-
+/*
             for (var t = 1; t < 5; t++)
             {
                 if (this.directions[t] === null)
@@ -330,7 +359,7 @@ var scoreText;
             }
 
            // this.game.debug.geom(this.turnPoint, '#ffff00');
-
+*/
         }
 
     };
