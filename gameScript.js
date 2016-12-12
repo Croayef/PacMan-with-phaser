@@ -163,6 +163,7 @@ if( stage === 1)
         this.scoreText = this.add.text(10, 480, this.scoreString + this.score, { font: '34px Arial', fill: '#fff' });
           
           this.move(Phaser.DOWN);
+          this.redMove(Phaser.DOWN);
           
         },
 
@@ -196,19 +197,19 @@ if( stage === 1)
 
             if ( this.redTurn === Phaser.LEFT && this.redCurrent !== Phaser.LEFT)
             {
-                this.checkDirection(Phaser.LEFT);
+                this.checkRedDirection(this.redTurn);
             }
-            else if (this.redTurn === Phaser.LEFT && this.redCurrent !== Phaser.RIGHT)
+            else if (this.redTurn === Phaser.RIGHT && this.redCurrent !== Phaser.RIGHT)
             {
-                this.checkDirection(Phaser.RIGHT);
+                this.checkRedDirection(this.redTurn);
             }
-            else if (this.redTurn === Phaser.LEFT && this.redCurrent !== Phaser.UP)
+            else if (this.redTurn === Phaser.UP && this.redCurrent !== Phaser.UP)
             {
-                this.checkDirection(Phaser.UP);
+                this.checkRedDirection(this.redTurn);
             }
-            else if (this.redTurn === Phaser.LEFT && this.redCurrent !== Phaser.DOWN)
+            else if (this.redTurn === Phaser.DOWN && this.redCurrent !== Phaser.DOWN)
             {
-                this.checkDirection(Phaser.DOWN);
+                this.checkRedDirection(this.redTurn);
             }
             else
             {
@@ -241,11 +242,67 @@ if( stage === 1)
 
         },
       
+      junction: function(dirs, curr){
+        
+        if(curr === Phaser.LEFT || curr === Phaser.RIGHT){
+          if((dirs[Phaser.UP].index === this.safetile || dirs[Phaser.DOWN].index === this.safetile)){
+            return true;
+          }
+        } 
+        else if(curr === Phaser.UP || curr === Phaser.DOWN){
+          if((dirs[Phaser.LEFT].index === this.safetile || dirs[Phaser.RIGHT].index === this.safetile)){
+            return true;
+          }
+        }
+        else{
+          return false;
+        }
+      },
+      
+      canTurn: function(turnTo, dirs, curr){
+        
+        if((curr === Phaser.LEFT || curr === Phaser.RIGHT) && (dirs[Phaser.UP].index === this.safetile || dirs[Phaser.DOWN].index === this.safetile)){
+          if (dirs[turnTo] === null || dirs[turnTo].index !== this.safetile || curr === this.opposites[turnTo])
+            {
+                //  Invalid direction if they're already set to turn that way
+                //  Or there is no tile there, or the tile isn't index a floor tile
+                return false;
+            }
+        else{
+          return true;
+        }   
+        }
+        
+        else if(dirs[Phaser.LEFT].index === this.safetile || dirs[Phaser.RIGHT].index === this.safetile){
+          if (dirs[turnTo] === null || dirs[turnTo].index !== this.safetile || curr === this.opposites[turnTo])
+            {
+                //  Invalid direction if they're already set to turn that way
+                //  Or there is no tile there, or the tile isn't index a floor tile
+                return false;
+            }
+        else{
+          return true;
+        }   
+        }
+       
+        if (dirs[turnTo] === null || dirs[turnTo].index !== this.safetile || curr === this.opposites[turnTo])
+            {
+                //  Invalid direction if they're already set to turn that way
+                //  Or there is no tile there, or the tile isn't index a floor tile
+                return false;
+            }
+        else{
+          return true;
+        }
+        
+      },
+      
       
         checkRedDirection: function (turnTo) {
 
-            if (this.redTurn === turnTo || this.redDirections[turnTo] === null || this.redDirections[turnTo].index !== this.safetile)
+            if (this.redDirections[turnTo] === null || this.redDirections[turnTo].index !== this.safetile)
             {
+              
                 //  Invalid direction if they're already set to turn that way
                 //  Or there is no tile there, or the tile isn't index a floor tile
                 return;
@@ -254,10 +311,12 @@ if( stage === 1)
             //  Check if they want to turn around and can
             if (this.redCurrent === this.opposites[turnTo])
             {
+              
                 this.redMove(turnTo);
             }
             else
             {
+              
                 this.redTurn = turnTo;
 
                 this.redTurnPoint.x = (this.redMarker.x * this.gridsize) + (this.gridsize / 2);
@@ -317,7 +376,10 @@ if( stage === 1)
       redMove: function(direction){
         
         var speed = this.speed;
-
+        
+        if(direction === this.redCurrent){
+          return ;
+        }
             if (direction === Phaser.LEFT || direction === Phaser.UP)
             {
                 speed = -speed;
@@ -336,9 +398,12 @@ if( stage === 1)
             this.redGhost.angle = 0;
           
            
-        
-          if (direction === Phaser.LEFT)
+        if(direction === Phaser.RIGHT){
+          this.redGhost.play('redHorizontalGhost');
+        }
+          else if (direction === Phaser.LEFT)
             {
+              this.redGhost.play('redHorizontalGhost');
                 this.redGhost.scale.x = -1;
             }
             else if (direction === Phaser.UP)
@@ -430,32 +495,21 @@ if( stage === 1)
 
         update: function () {
           
-         
-          var rnd = rand(0,100);
-          if(rnd < 25){
-            this.redTurn = Phaser.LEFT;
-          }
-          else if(rnd < 50){
-            this.redTurn = Phaser.RIGHT;
-          }
-          else if(rnd < 75){
-            this.redTurn = Phaser.UP;
-          }
-          else{
-            this.redTurn = Phaser.DOWN;
-          }
-          
-          
           this.physics.arcade.collide(this.pacman, this.layer);
           this.physics.arcade.overlap(this.pacman, this.redGhost, this.die, null, this);
           this.physics.arcade.overlap(this.pacman, this.dots, this.eatDot, null, this);
-          this.physics.arcade.collide(this.redGhost, this.layer);
+          this.physics.arcade.collide(this.redGhost, this.layer, function(){
+            if(this.redTurn !== this.redCurrent){
+              return;
+            }else
+              this.redMove(this.opposites[this.redCurrent]);
+          },null,this);
           
           this.marker.x = this.math.snapToFloor(Math.floor(this.pacman.x), this.gridsize) / this.gridsize;
           this.marker.y = this.math.snapToFloor(Math.floor(this.pacman.y), this.gridsize) / this.gridsize;
           
-          this.redMarker.x = this.math.snapToFloor(Math.floor(this.pacman.x), this.gridsize) / this.gridsize;
-          this.redMarker.y = this.math.snapToFloor(Math.floor(this.pacman.y), this.gridsize) / this.gridsize;
+          this.redMarker.x = this.math.snapToFloor(Math.floor(this.redGhost.x), this.gridsize) / this.gridsize;
+          this.redMarker.y = this.math.snapToFloor(Math.floor(this.redGhost.y), this.gridsize) / this.gridsize;
           
           //  Update our grid sensors
           this.directions[1] = this.map.getTileLeft(this.layer.index, this.marker.x, this.marker.y);
@@ -468,22 +522,76 @@ if( stage === 1)
           this.redDirections[3] = this.map.getTileAbove(this.layer.index, this.redMarker.x, this.redMarker.y);
           this.redDirections[4] = this.map.getTileBelow(this.layer.index, this.redMarker.x, this.redMarker.y);
           
+          
+          if(this.junction(this.redDirections, this.redCurrent) ){
+            if(this.redMarker.x > this.marker.x && this.canTurn(Phaser.LEFT,this.redDirections,Phaser.NONE)){
+              this.redTurn = Phaser.LEFT;
+            }
+            else if(this.redMarker.y > this.marker.y && this.canTurn(Phaser.UP,this.redDirections,Phaser.NONE)){
+              this.redTurn = Phaser.UP;
+            }
+            else if(this.redMarker.y < this.marker.y && this.canTurn(Phaser.DOWN,this.redDirections,Phaser.NONE)){
+              this.redTurn = Phaser.DOWN;
+            }
+            else if(this.redMarker.x < this.marker.x && this.canTurn(Phaser.RIGHT,this.redDirections,Phaser.NONE)){
+              this.redTurn = Phaser.RIGHT;
+            }
+            /*
+            var rnd;
+            rnd = rand(1,10);
+            if(rnd === 1){
+              this.redTurn = Phaser.UP;
+            }
+            else if(rnd === 2){
+              this.redTurn = Phaser.DOWN;
+            }else if(rnd === 3){
+              this.redTurn = Phaser.LEFT;
+            }
+            else if(rnd === 4){
+              this.redTurn = Phaser.LEFT;
+            }
+            else{
+              this.redTurn = Phaser.NONE;
+            }*/
+            //this.score = this.redTurn;
+          }else if(this.blocked(this.redDirections, this.redCurrent)){
+            this.redTurn = this.opposites[this.redCurrent];
+          }
+            if (this.redTurn !== Phaser.NONE)
+            {
+                 this.redMove(this.redTurn);
+            }
+         
+             
+      
           this.checkKeys();
           
           if (this.turning !== Phaser.NONE)
             {
                 this.turn();
             }
-          
-          if(this.redTurn !== Phaser.NONE)
-          {
-            this.redGhostTurn();
-          }
-          
-            
-
+  
         },
-      
+      blocked: function(dirs, curr){
+        if(dirs[curr].index !== this.safetile)
+        {
+            if(curr === Phaser.UP || curr === Phaser.DOWN){
+            if(dirs[Phaser.LEFT].index !== this.safetile && dirs[Phaser.RIGHT].index !== this.safetile ){
+              return true;
+            }
+          }
+          else if(curr === Phaser.LEFT || curr === Phaser.RIGHT){
+            if(dirs[Phaser.UP].index !== this.safetile && dirs[Phaser.DOWN].index !== this.safetile ){
+              return true;
+            }
+          }
+          return false;
+        }
+        else {
+          return false;
+        }
+          
+      },
         restart : function() {
           this.state.restart();
         }
